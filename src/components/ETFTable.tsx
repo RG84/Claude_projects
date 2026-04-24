@@ -8,6 +8,7 @@ const PERIODS: TimePeriod[] = ['1M', '3M', '6M', '1Y'];
 
 interface ETFTableProps {
   etfs: ETF[];
+  loading: boolean;
 }
 
 interface Column {
@@ -59,7 +60,22 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Fixed Income': 'bg-slate-100 text-slate-600',
 };
 
-export function ETFTable({ etfs }: ETFTableProps) {
+function SkeletonRow() {
+  return (
+    <tr className="border-b border-gray-100">
+      {[20, 52, 24, 16, 16, 16, 16, 12, 12].map((w, i) => (
+        <td key={i} className="px-4 py-3">
+          <div
+            className="h-4 bg-gray-100 rounded animate-pulse"
+            style={{ width: `${w * 4}px`, maxWidth: '100%' }}
+          />
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+export function ETFTable({ etfs, loading }: ETFTableProps) {
   const [sortField, setSortField] = useState<SortField>('1Y');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
@@ -87,7 +103,7 @@ export function ETFTable({ etfs }: ETFTableProps) {
     return ((aVal as number) - (bVal as number)) * mult;
   });
 
-  if (etfs.length === 0) {
+  if (!loading && etfs.length === 0) {
     return (
       <div className="text-center py-16 text-gray-400">
         <p className="text-lg font-medium">No funds match your search</p>
@@ -123,49 +139,49 @@ export function ETFTable({ etfs }: ETFTableProps) {
           </tr>
         </thead>
         <tbody>
-          {sorted.map((etf) => {
-            const isSelected = selectedTicker === etf.ticker;
-            return (
-              <Fragment key={etf.ticker}>
-                <tr
-                  onClick={() => handleRowClick(etf.ticker)}
-                  className={`border-b border-gray-100 cursor-pointer transition-colors ${
-                    isSelected
-                      ? 'bg-blue-50 hover:bg-blue-50'
-                      : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <td className="px-4 py-3 font-bold text-gray-900 whitespace-nowrap">
-                    {etf.ticker}
-                  </td>
-                  <td className="px-4 py-3 text-gray-700 max-w-xs truncate">{etf.name}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${CATEGORY_COLORS[etf.category]}`}>
-                      {etf.category}
-                    </span>
-                  </td>
-                  {PERIODS.map((period) => (
-                    <td key={period} className="px-4 py-3 text-right whitespace-nowrap">
-                      <PerformanceBadge value={etf.performance[period]} />
-                    </td>
-                  ))}
-                  <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">
-                    {etf.expenseRatio.toFixed(2)}%
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">
-                    ${etf.aumBillions}B
-                  </td>
-                </tr>
-                {isSelected && (
-                  <tr>
-                    <td colSpan={9} className="p-0">
-                      <ETFDetailPanel etf={etf} onClose={() => setSelectedTicker(null)} />
-                    </td>
-                  </tr>
-                )}
-              </Fragment>
-            );
-          })}
+          {loading
+            ? Array.from({ length: 12 }).map((_, i) => <SkeletonRow key={i} />)
+            : sorted.map((etf) => {
+                const isSelected = selectedTicker === etf.ticker;
+                return (
+                  <Fragment key={etf.ticker}>
+                    <tr
+                      onClick={() => handleRowClick(etf.ticker)}
+                      className={`border-b border-gray-100 cursor-pointer transition-colors ${
+                        isSelected ? 'bg-blue-50 hover:bg-blue-50' : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <td className="px-4 py-3 font-bold text-gray-900 whitespace-nowrap">
+                        {etf.ticker}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700 max-w-xs truncate">{etf.name}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${CATEGORY_COLORS[etf.category]}`}>
+                          {etf.category}
+                        </span>
+                      </td>
+                      {PERIODS.map((period) => (
+                        <td key={period} className="px-4 py-3 text-right whitespace-nowrap">
+                          <PerformanceBadge value={etf.performance[period]} />
+                        </td>
+                      ))}
+                      <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">
+                        {etf.expenseRatio.toFixed(2)}%
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">
+                        ${etf.aumBillions}B
+                      </td>
+                    </tr>
+                    {isSelected && (
+                      <tr>
+                        <td colSpan={9} className="p-0">
+                          <ETFDetailPanel etf={etf} onClose={() => setSelectedTicker(null)} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
         </tbody>
       </table>
     </div>

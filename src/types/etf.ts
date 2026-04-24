@@ -27,3 +27,9 @@ export interface ETF {
 
 export type SortField = 'ticker' | 'name' | 'category' | TimePeriod | 'expenseRatio' | 'aumBillions';
 export type SortDirection = 'asc' | 'desc';
+
+export type DataSource = 'live' | 'mock' | 'error';
+
+export interface EnrichedETF extends ETF {
+  dataSource: DataSource;
+}
