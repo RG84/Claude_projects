@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>English → Swahili Translator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: #f0f4f8;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
+      padding: 36px 40px;
+      width: 100%;
+      max-width: 680px;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .header h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .header h1 span { color: #4dd9ac; }
+
+    .header p {
+      margin-top: 6px;
+      font-size: 0.88rem;
+      color: rgba(255,255,255,0.5);
+    }
+
+    /* ── compatibility banner ── */
+    #compat-warning {
+      display: none;
+      background: rgba(255, 180, 50, 0.15);
+      border: 1px solid rgba(255, 180, 50, 0.4);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 0.83rem;
+      color: #ffd580;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    /* ── section labels ── */
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: rgba(255,255,255,0.45);
+      margin-bottom: 8px;
+    }
+
+    /* ── English input area ── */
+    .input-group { margin-bottom: 20px; }
+
+    .textarea-wrapper { position: relative; }
+
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 12px;
+      padding: 14px 50px 14px 16px;
+      color: #f0f4f8;
+      font-size: 1rem;
+      line-height: 1.6;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    textarea::placeholder { color: rgba(255,255,255,0.25); }
+    textarea:focus { border-color: rgba(77,217,172,0.5); }
+
+    /* ── mic button (inside textarea wrapper) ── */
+    #mic-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(77,217,172,0.2);
+      color: #4dd9ac;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, transform 0.15s;
+    }
+
+    #mic-btn:hover { background: rgba(77,217,172,0.35); }
+    #mic-btn.recording { background: rgba(255, 80, 80, 0.35); color: #ff6b6b; animation: pulse 1s infinite; }
+    #mic-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.12); }
+    }
+
+    .mic-hint {
+      margin-top: 6px;
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.35);
+    }
+
+    /* ── action buttons ── */
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 13px 20px;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: opacity 0.2s, transform 0.12s, background 0.2s;
+    }
+
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #4dd9ac, #2ab88a);
+      color: #0f2027;
+    }
+
+    .btn-primary:hover:not(:disabled) { opacity: 0.9; }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: #f0f4f8;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.16); }
+
+    /* ── output area ── */
+    .output-section {}
+
+    .output-box {
+      background: rgba(77,217,172,0.07);
+      border: 1px solid rgba(77,217,172,0.2);
+      border-radius: 12px;
+      padding: 16px;
+      min-height: 100px;
+      font-size: 1.05rem;
+      line-height: 1.7;
+      color: #e0faf2;
+      word-break: break-word;
+    }
+
+    .output-box.placeholder { color: rgba(255,255,255,0.2); font-style: italic; font-size: 0.95rem; }
+
+    .output-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .btn-icon {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      color: #f0f4f8;
+      cursor: pointer;
+      padding: 8px 14px;
+      font-size: 0.83rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+
+    .btn-icon:hover:not(:disabled) { background: rgba(255,255,255,0.14); }
+    .btn-icon:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-icon.speaking { color: #4dd9ac; border-color: rgba(77,217,172,0.4); animation: pulse 1s infinite; }
+
+    /* ── status / error ── */
+    #status {
+      text-align: center;
+      font-size: 0.83rem;
+      margin-top: 18px;
+      min-height: 20px;
+      color: rgba(255,255,255,0.45);
+    }
+
+    #status.error { color: #ff8a8a; }
+    #status.success { color: #4dd9ac; }
+
+    /* ── spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(15,32,39,0.4);
+      border-top-color: #0f2027;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── divider ── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      color: rgba(255,255,255,0.2);
+      font-size: 0.75rem;
+    }
+
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(255,255,255,0.1);
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <h1>English <span>→</span> Swahili</h1>
+    <p>Speak or type English — get instant Swahili translation</p>
+  </div>
+
+  <div id="compat-warning"></div>
+
+  <!-- English input -->
+  <div class="input-group">
+    <div class="section-label">English</div>
+    <div class="textarea-wrapper">
+      <textarea
+        id="english-input"
+        placeholder="Type here, or click the mic to speak…"
+        spellcheck="true"
+        lang="en"
+      ></textarea>
+      <button id="mic-btn" title="Start voice input" aria-label="Toggle microphone">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 1a4 4 0 0 1 4 4v7a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2v7a2 2 0 0 0 4 0V5a2 2 0 0 0-2-2zm-1 16.93V22h2v-2.07A8.001 8.001 0 0 0 20 12h-2a6 6 0 0 1-12 0H4a8.001 8.001 0 0 0 7 7.93z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="mic-hint" id="mic-hint">Click the mic button to speak in English</div>
+  </div>
+
+  <!-- Translate button -->
+  <div class="actions">
+    <button class="btn btn-primary" id="translate-btn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12.87 15.07l-2.54-2.51.03-.03A17.52 17.52 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/>
+      </svg>
+      Translate
+    </button>
+    <button class="btn btn-secondary" id="clear-btn">
+      Clear
+    </button>
+  </div>
+
+  <!-- Swahili output -->
+  <div class="divider">Swahili Translation</div>
+  <div class="output-section">
+    <div class="output-box placeholder" id="output-box">
+      Translation will appear here…
+    </div>
+    <div class="output-actions">
+      <button class="btn-icon" id="copy-btn" disabled title="Copy translation">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+        </svg>
+        Copy
+      </button>
+      <button class="btn-icon" id="play-btn" disabled title="Play Swahili audio">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" id="play-icon">
+          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+          <path d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77 0-4.28-2.99-7.86-7-8.77z"/>
+        </svg>
+        Play Swahili
+      </button>
+    </div>
+  </div>
+
+  <div id="status"></div>
+</div>
+
+<script>
+  const englishInput = document.getElementById('english-input');
+  const micBtn = document.getElementById('mic-btn');
+  const micHint = document.getElementById('mic-hint');
+  const translateBtn = document.getElementById('translate-btn');
+  const clearBtn = document.getElementById('clear-btn');
+  const outputBox = document.getElementById('output-box');
+  const playBtn = document.getElementById('play-btn');
+  const copyBtn = document.getElementById('copy-btn');
+  const statusEl = document.getElementById('status');
+  const compatWarning = document.getElementById('compat-warning');
+
+  let translation = '';
+  let recognition = null;
+  let isRecording = false;
+  let isSpeaking = false;
+  let speechUtterance = null;
+  let finalTranscript = '';
+
+  // ── Compatibility checks ──────────────────────────────────────────────────
+  const hasSpeechRecognition = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
+  const hasSpeechSynthesis = 'speechSynthesis' in window;
+
+  if (!hasSpeechRecognition) {
+    compatWarning.style.display = 'block';
+    compatWarning.textContent =
+      '⚠ Voice input requires Chrome or Edge. You can still type in English and translate.';
+    micBtn.disabled = true;
+    micHint.textContent = 'Voice input not supported in this browser — type instead.';
+  }
+
+  if (!hasSpeechSynthesis) {
+    // Will fall back to just showing the text; play button stays hidden
+    console.warn('SpeechSynthesis not supported');
+  }
+
+  // ── Speech Recognition ────────────────────────────────────────────────────
+  if (hasSpeechRecognition) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.lang = 'en-US';
+    recognition.interimResults = true;
+    recognition.continuous = false;
+
+    recognition.onstart = () => {
+      isRecording = true;
+      translateBtn.disabled = true;
+      micBtn.classList.add('recording');
+      micBtn.title = 'Stop recording';
+      micHint.textContent = 'Listening… click mic to stop';
+      setStatus('Listening for English speech…');
+    };
+
+    recognition.onresult = (e) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalTranscript += t;
+        else interim += t;
+      }
+      englishInput.value = finalTranscript + interim;
+    };
+
+    recognition.onend = () => {
+      isRecording = false;
+      translateBtn.disabled = false;
+      micBtn.classList.remove('recording');
+      micBtn.title = 'Start voice input';
+      micHint.textContent = 'Click the mic button to speak in English';
+      setStatus('');
+    };
+
+    recognition.onerror = (e) => {
+      isRecording = false;
+      micBtn.classList.remove('recording');
+      const msgs = {
+        'not-allowed': 'Microphone permission denied. Please allow access in your browser.',
+        'no-speech': 'No speech detected. Try again.',
+        'network': 'Network error during speech recognition.',
+      };
+      setStatus(msgs[e.error] || `Speech recognition error: ${e.error}`, 'error');
+    };
+  }
+
+  micBtn.addEventListener('click', () => {
+    if (!recognition) return;
+    if (isRecording) {
+      recognition.stop();
+    } else {
+      englishInput.value = '';
+      finalTranscript = '';
+      try {
+        recognition.start();
+      } catch (err) {
+        setStatus('Could not start microphone: ' + err.message, 'error');
+      }
+    }
+  });
+
+  // ── Translation ───────────────────────────────────────────────────────────
+  translateBtn.addEventListener('click', doTranslate);
+
+  englishInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) doTranslate();
+  });
+
+  async function doTranslate() {
+    const text = englishInput.value.trim();
+    if (!text) {
+      setStatus('Please enter or speak some English text first.', 'error');
+      return;
+    }
+
+    setTranslating(true);
+    setStatus('Translating…');
+
+    try {
+      const res = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        throw new Error(data.error || `Server error ${res.status}`);
+      }
+
+      translation = data.translation;
+      outputBox.textContent = translation;
+      outputBox.classList.remove('placeholder');
+      playBtn.disabled = false;
+      copyBtn.disabled = false;
+      setStatus('Translation complete.', 'success');
+    } catch (err) {
+      setStatus('Translation failed: ' + err.message, 'error');
+    } finally {
+      setTranslating(false);
+    }
+  }
+
+  function setTranslating(on) {
+    if (on) {
+      translateBtn.disabled = true;
+      translateBtn.innerHTML = '<span class="spinner"></span> Translating…';
+    } else {
+      translateBtn.disabled = false;
+      translateBtn.innerHTML = `
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12.87 15.07l-2.54-2.51.03-.03A17.52 17.52 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/>
+        </svg>
+        Translate`;
+    }
+  }
+
+  // ── Clear ─────────────────────────────────────────────────────────────────
+  clearBtn.addEventListener('click', () => {
+    if (isRecording && recognition) recognition.stop();
+    if (isSpeaking) stopSpeech();
+    englishInput.value = '';
+    outputBox.textContent = 'Translation will appear here…';
+    outputBox.classList.add('placeholder');
+    translation = '';
+    playBtn.disabled = true;
+    copyBtn.disabled = true;
+    setStatus('');
+  });
+
+  // ── Speech Synthesis (Play Swahili) ───────────────────────────────────────
+  playBtn.addEventListener('click', () => {
+    if (isSpeaking) {
+      stopSpeech();
+      return;
+    }
+    if (!translation) return;
+    playSpeech(translation);
+  });
+
+  function playSpeech(text) {
+    if (!hasSpeechSynthesis) {
+      setStatus('Text-to-speech is not supported in this browser.', 'error');
+      return;
+    }
+    window.speechSynthesis.cancel();
+
+    speechUtterance = new SpeechSynthesisUtterance(text);
+
+    // Try to find a Swahili voice; fall back to default
+    const voices = window.speechSynthesis.getVoices();
+    const swVoice = voices.find(v => v.lang.startsWith('sw')) || null;
+    if (swVoice) {
+      speechUtterance.voice = swVoice;
+      speechUtterance.lang = swVoice.lang;
+    } else {
+      speechUtterance.lang = 'sw-TZ';
+    }
+
+    speechUtterance.rate = 0.95;
+    speechUtterance.pitch = 1;
+
+    speechUtterance.onstart = () => {
+      isSpeaking = true;
+      playBtn.classList.add('speaking');
+      playBtn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+        </svg>
+        Stop`;
+      setStatus('Playing Swahili audio…');
+    };
+
+    speechUtterance.onend = () => {
+      isSpeaking = false;
+      playBtn.classList.remove('speaking');
+      playBtn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+          <path d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77 0-4.28-2.99-7.86-7-8.77z"/>
+        </svg>
+        Play Swahili`;
+      setStatus('');
+    };
+
+    speechUtterance.onerror = (e) => {
+      isSpeaking = false;
+      playBtn.classList.remove('speaking');
+      setStatus('Audio playback error: ' + e.error, 'error');
+    };
+
+    window.speechSynthesis.speak(speechUtterance);
+  }
+
+  function stopSpeech() {
+    window.speechSynthesis.cancel();
+    isSpeaking = false;
+    playBtn.classList.remove('speaking');
+    playBtn.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+        <path d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77 0-4.28-2.99-7.86-7-8.77z"/>
+      </svg>
+      Play Swahili`;
+    setStatus('');
+  }
+
+  // Load voices asynchronously (Chrome fires this event)
+  if (hasSpeechSynthesis && window.speechSynthesis.onvoiceschanged !== undefined) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      // Voices loaded; no action needed beyond availability at speak-time
+    };
+  }
+
+  // ── Copy ──────────────────────────────────────────────────────────────────
+  copyBtn.addEventListener('click', async () => {
+    if (!translation) return;
+    try {
+      await navigator.clipboard.writeText(translation);
+      const orig = copyBtn.innerHTML;
+      copyBtn.innerHTML = '✓ Copied';
+      setTimeout(() => { copyBtn.innerHTML = orig; }, 1500);
+    } catch {
+      setStatus('Could not copy to clipboard.', 'error');
+    }
+  });
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function setStatus(msg, type = '') {
+    statusEl.textContent = msg;
+    statusEl.className = type ? `${type}` : '';
+  }
+</script>
+</body>
+</html>
